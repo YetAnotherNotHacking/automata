@@ -2,14 +2,14 @@ const mineflayer = require('mineflayer');
 const { pathfinder, Movements, goals } = require('mineflayer-pathfinder');
 const Vec3 = require('vec3');
 
-const BOT_USERNAME = 'yetanotherdingus@gmail.com'; 
-const SERVER_HOST = 'anarchymc.me'; 
-const SERVER_PORT = 50000; 
-const AUTH_TYPE = 'microsoft'; 
+const BOT_USERNAME = '-----------------@gmail.com'; // your username or email
+const SERVER_HOST = '---------.--'; //server
+const SERVER_PORT = ------; //server port
+const AUTH_TYPE = 'microsoft'; //use offile for cracked servers
 
-const TRUSTED_USERS = ['ProbNotHacking', 'ProbNotAlting', 'TrustedUser2']; // Add more trusted users as needed
-const ITEMS_TO_DISCARD = ['netherrack', 'cobblestone'];
-const COLLECTION_RADIUS = 32; // Adjust this value to change the collection area
+const TRUSTED_USERS = ['ProbNotHacking', 'ProbNotAlting']; //users to accept whisper commands from
+const ITEMS_TO_DISCARD = ['netherrack', 'cobblestone']; //blocks that might fill up the inventory 
+const COLLECTION_RADIUS = 32; // how far can it explre?
 
 function createBot() {
   const bot = mineflayer.createBot({
@@ -21,7 +21,7 @@ function createBot() {
 
   bot.loadPlugin(pathfinder);
 
-  // Handle successful login
+  // login
   bot.once('spawn', () => {
     console.log('Bot has spawned and is ready to receive commands.');
     const mcData = require('minecraft-data')(bot.version);
@@ -29,7 +29,7 @@ function createBot() {
     bot.pathfinder.setMovements(defaultMove);
   });
 
-  // Handle errors and disconnects
+  // disconnections
   bot.on('error', (err) => console.log('Error:', err));
   bot.on('end', () => {
     console.log('Bot has disconnected. Attempting to reconnect in 5 seconds...');
@@ -92,7 +92,7 @@ async function collectItems(bot, requester, itemName, amount, originalPosition) 
   let dropChest = null;
 
   while (collectedCount < amount) {
-    if (Date.now() - startTime > 300000) { // 5 minutes timeout
+    if (Date.now() - startTime > 300000) { // 5 min. timeout
       console.log('Collection timed out. Returning to original position.');
       bot.whisper(requester, 'Collection timed out. Returning to original position.');
       break;
@@ -101,26 +101,26 @@ async function collectItems(bot, requester, itemName, amount, originalPosition) 
     const entity = bot.nearestEntity(entity => {
       return entity.name === 'item' && 
              entity.position.distanceTo(bot.entity.position) < COLLECTION_RADIUS &&
-             bot.entity.position.distanceTo(entity.position) > 1; // Avoid picking up recently thrown items
+             bot.entity.position.distanceTo(entity.position) > 1; // do not pick up the items it just threw out
     });
 
     if (entity) {
       const { x, y, z } = entity.position;
       await bot.pathfinder.goto(new goals.GoalNear(x, y, z, 1));
 
-      // Wait for the item to be collected
+      // ensure that it pick up items
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       if (bot.inventory.items().some(i => i.name === itemName)) {
         collectedCount++;
         console.log(`Collected ${collectedCount}/${amount} ${itemName}`);
         
-        // Notify requester every 10 items
+        // send updates to person that ordered the items
         if (collectedCount % 10 === 0 || collectedCount === amount) {
           bot.whisper(requester, `Collected ${collectedCount}/${amount} ${itemName}`);
         }
 
-        // Discard unwanted items
+        // get rid of unwanted items as defined at the top of the script
         for (const itemToDiscard of ITEMS_TO_DISCARD) {
           const discardItem = bot.inventory.items().find(i => i.name === itemToDiscard);
           if (discardItem) {
@@ -129,7 +129,7 @@ async function collectItems(bot, requester, itemName, amount, originalPosition) 
           }
         }
 
-        // Place a chest if inventory is full
+        // place a chest when the inventory is full, will depricate
         if (bot.inventory.emptySlotCount() === 0 && !dropChest) {
           dropChest = await placeChest(bot, originalPosition);
           if (dropChest) {
@@ -137,7 +137,7 @@ async function collectItems(bot, requester, itemName, amount, originalPosition) 
           }
         }
 
-        // Deposit items in the chest if it exists
+        // put the thing in the chest if the chest is a chest
         if (dropChest && bot.inventory.emptySlotCount() < 5) {
           await depositItems(bot, dropChest, itemName);
         }
@@ -150,7 +150,7 @@ async function collectItems(bot, requester, itemName, amount, originalPosition) 
       await bot.pathfinder.goto(new goals.GoalNear(newPosition.x, newPosition.y, newPosition.z, 1));
     }
 
-    // Avoid mobs
+    // scawy mobs
     const nearestMob = bot.nearestEntity(entity => entity.type === 'mob');
     if (nearestMob && nearestMob.position.distanceTo(bot.entity.position) < 5) {
       console.log('Avoiding nearby mob');
